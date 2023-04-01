@@ -1,8 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const { optimize } = require('svgo');
-const parser = require('posthtml-parser');
-const match = require('posthtml/lib/api').match;
+const { parser } = require('posthtml-parser');
 
 const defaultSvgoOptions = {
   plugins: [
@@ -53,7 +52,6 @@ module.exports = function postHtmlInlineSvg(options = {}) {
 
   return tree => {
     if (!tree.parser) tree.parser = parser;
-    if (!tree.match) tree.match = match;
     tree.match({ tag }, (node) => {
       const src = node.attrs[attr];
       const svg = getSVG(path.resolve(cwd, src));
