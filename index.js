@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const SVGO = require('svgo');
+const { optimize, extendDefaultPlugins } = require('svgo');
 const parser = require('posthtml-parser');
 const match = require('posthtml/lib/api').match;
 
@@ -18,7 +18,7 @@ module.exports = function postHtmlInlineSvg(options = {}) {
   const cwd = options.cwd || process.cwd();
   const tag = options.tag || 'icon';
   const attr = options.attr || 'src';
-  const svgo = new SVGO(options.svgo || defaultSvgoOptions);
+  const optimizeWithOptions = svgString => optimize(svgString, options.svgo || defaultSvgoOptions)
 
   const localCache = {};
 
@@ -31,49 +31,37 @@ module.exports = function postHtmlInlineSvg(options = {}) {
     const modifiedAt = stats.mtimeMs;
 
     if (cache[filePath] && cache[filePath].modifiedAt === modifiedAt) {
-      localCache[filePath] = cache[filePath].promise;
-      return cache[filePath].promise;
+      localCache[filePath] = cache[filePath].data;
+      return cache[filePath].data;
     }
 
-    const promise = new Promise((resolve) => {
-      const data = fs.readFileSync(filePath);
-      return svgo.optimize(data.toString()).then(result => resolve(result.data));
-    });
+    const fileData = fs.readFileSync(filePath, "utf8");
+    const data = optimizeWithOptions(fileData).data;
 
-    cache[filePath] = { promise, modifiedAt };
-    localCache[filePath] = promise;
+    cache[filePath] = { data, modifiedAt };
+    localCache[filePath] = data;
 
-    return promise;
+    return data;
   };
 
-  return tree => new Promise((resolve, reject) => {
-    const promises = [];
+  return tree => {
     if (!tree.parser) tree.parser = parser;
     if (!tree.match) tree.match = match;
     tree.match({ tag }, (node) => {
-      promises.push(new Promise(async (resolve, reject) => {
-        try {
-          const src = node.attrs[attr];
-          const svg = await getSVG(path.resolve(cwd, src));
-          const nodes = parser(svg);
-          const attrs = node.attrs;
-          delete attrs[attr];
+      const src = node.attrs[attr];
+      const svg = getSVG(path.resolve(cwd, src));
+      const nodes = parser(svg);
+      const attrs = node.attrs;
+      delete attrs[attr];
 
-          Object.assign(nodes[0].attrs, attrs);
-          node.tag = false;
-          node.content = options.comment
-            ? [`<!-- ${src} -->`, ...nodes]
-            : nodes;
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-      }));
+      Object.assign(nodes[0].attrs, attrs);
+      node.tag = false;
+      node.content = options.comment
+        ? [`<!-- ${src} -->`, ...nodes]
+        : nodes;
       return node;
     });
 
-    Promise.all(promises)
-      .then(() => resolve(tree))
-      .catch(reject);
-  });
+    return tree;
+  };
 };
