@@ -9,12 +9,12 @@ const defaultSvgoOptions = {
       name: "preset-default",
       params: {
         overrides: {
-          removeXMLNS: true,
-          removeViewBox: false,
-          removeDimensions: true
+          removeViewBox: false
         }
       }
-    }
+    },
+    "removeDimensions",
+    "removeXMLNS"
   ],
 };
 
