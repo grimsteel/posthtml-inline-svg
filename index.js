@@ -1,14 +1,21 @@
 const path = require('path');
 const fs = require('fs');
-const { optimize, extendDefaultPlugins } = require('svgo');
+const { optimize } = require('svgo');
 const parser = require('posthtml-parser');
 const match = require('posthtml/lib/api').match;
 
 const defaultSvgoOptions = {
   plugins: [
-    { removeXMLNS: true },
-    { removeViewBox: false },
-    { removeDimensions: true },
+    {
+      name: "preset-default",
+      params: {
+        overrides: {
+          removeXMLNS: true,
+          removeViewBox: false,
+          removeDimensions: true
+        }
+      }
+    }
   ],
 };
 
